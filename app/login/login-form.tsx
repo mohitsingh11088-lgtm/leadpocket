@@ -263,7 +263,7 @@ export default function LoginForm() {
         <button
           type="button"
           onClick={() => {
-            setMode("sign-in");
+            setMode(mode === "sign-in" ? "sign-up" : "sign-in");
             setErrorMessage("");
             setSuccessMessage("");
           }}
