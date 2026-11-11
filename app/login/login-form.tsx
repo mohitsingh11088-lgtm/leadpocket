@@ -8,6 +8,22 @@ import { getPublicAppUrl } from "@/lib/public-app-url";
 
 type AuthMode = "sign-in" | "sign-up" | "forgot-password";
 
+function getAuthErrorMessage(error: unknown) {
+  const message =
+    error instanceof Error ? error.message : "We could not complete this request.";
+  const normalizedMessage = message.toLowerCase();
+
+  if (
+    normalizedMessage.includes("rate limit") ||
+    normalizedMessage.includes("too many requests") ||
+    normalizedMessage.includes("429")
+  ) {
+    return "Email sending is temporarily rate-limited. Please wait before trying again. For reliable account and password emails, configure a custom SMTP provider in Supabase under Authentication → SMTP. Keep email confirmation enabled.";
+  }
+
+  return message;
+}
+
 export default function LoginForm() {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("sign-in");
@@ -25,13 +41,25 @@ export default function LoginForm() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const authError = new URLSearchParams(window.location.search).get("error");
-      if (authError === "confirmation") {
+      if (authError === "configuration") {
         setErrorMessage(
-          "That email confirmation link could not be verified. Try signing in or request a new confirmation email."
+          "Account verification is temporarily unavailable. Please try again later."
+        );
+      } else if (authError === "confirmation") {
+        setErrorMessage(
+          "That email confirmation link could not be verified. Request a new confirmation email and try again."
+        );
+      } else if (authError === "confirmation_expired") {
+        setErrorMessage(
+          "That email confirmation link has expired. Request a new confirmation email and try again."
         );
       } else if (authError === "recovery") {
         setErrorMessage(
-          "That password reset link is invalid or has expired. Request a new one and try again."
+          "That password reset link could not be verified. Request a new reset email and try again."
+        );
+      } else if (authError === "recovery_expired") {
+        setErrorMessage(
+          "That password reset link has expired. Request a new reset email and try again."
         );
       }
     }, 0);
@@ -119,9 +147,7 @@ export default function LoginForm() {
       router.replace(destination);
       router.refresh();
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "We could not complete sign-in."
-      );
+      setErrorMessage(getAuthErrorMessage(error));
     } finally {
       setBusy(false);
     }

@@ -46,7 +46,14 @@ LeadPocket uses Supabase for account sign-in and private lead storage. To connec
 5. In Supabase Authentication settings, set the site URL to `http://localhost:3000` and add `http://localhost:3000/auth/callback` to the allowed redirect URLs.
 6. Restart the dev server with `npm run dev`, then open `http://localhost:3000` and create an account.
 
-For production password recovery, set `NEXT_PUBLIC_APP_URL` to `https://leadpocket.vercel.app` (or your chosen public site origin) in Vercel's environment settings and redeploy so the value is included in the client bundle. The app uses that origin for password recovery and signup confirmation; production falls back to `https://leadpocket.vercel.app` and never uses localhost or a Codespaces host. In Supabase Authentication → URL Configuration, set the production Site URL and allow `https://leadpocket.vercel.app/auth/callback` as a redirect URL (and `http://localhost:3000/auth/callback` only for local development). The callback exchanges the one-time authorization code, stores the Supabase session, and sends password recovery users to `/reset-password`.
+For production email verification and password recovery, set `NEXT_PUBLIC_APP_URL=https://leadpocket.vercel.app` in Vercel's Production environment and redeploy. Production never falls back to localhost or a Codespaces host. In Supabase Authentication → URL Configuration, set the Site URL to `https://leadpocket.vercel.app` and allow `https://leadpocket.vercel.app/auth/callback` as a redirect URL. Add `http://localhost:3000/auth/callback` only for local development.
+
+The callback accepts either the existing PKCE `code` flow or a one-time email `token_hash`; it consumes only one credential per request. For email links that must work when opened on a different device/browser, update the Supabase Auth email templates to send a token hash directly to the production callback:
+
+- Confirm signup: `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup`
+- Reset password: `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery`
+
+Set the Supabase Site URL to the production URL above. The callback verifies the one-time token and persists the session in Supabase cookies. Signup confirmation goes to `/`; recovery goes to `/reset-password`. Keep the confirmation and recovery templates distinct so Supabase supplies the correct `type`.
 
 ## Website lead capture
 

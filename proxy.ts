@@ -29,6 +29,10 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isPublic = isPublicPath(pathname);
 
+  if (pathname === "/auth/callback") {
+    return NextResponse.next({ request });
+  }
+
   if (!isSupabaseConfigured()) {
     if (isPublic) {
       return NextResponse.next({ request });
