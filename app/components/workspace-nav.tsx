@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import SignOutButton from "./sign-out-button";
+import ThemeToggle from "./theme-toggle";
 
 const links = [
   { label: "Dashboard", href: "/" },
@@ -44,7 +45,8 @@ export default function WorkspaceNav({ active }: { active: string }) {
         </div>
       </nav>
 
-      <div className="flex shrink-0 justify-end">
+      <div className="flex shrink-0 items-center justify-end gap-2">
+        <ThemeToggle />
         <SignOutButton />
       </div>
     </header>

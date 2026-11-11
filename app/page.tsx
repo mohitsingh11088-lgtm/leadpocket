@@ -8,6 +8,7 @@ import type {
   LeadSourceChannel,
 } from "@/lib/supabase/database.types";
 import SignOutButton from "./components/sign-out-button";
+import ThemeToggle from "./components/theme-toggle";
 import {
   LayoutDashboard,
   Users,
@@ -382,6 +383,8 @@ export default function Home() {
                 <Bell size={19} />
                 <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
               </button>
+
+              <ThemeToggle />
 
               <div className="flex items-center gap-2 border-l border-slate-200 pl-3 sm:pl-5">
 
