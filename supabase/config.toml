@@ -1,0 +1,8 @@
+[functions.capture-lead]
+verify_jwt = false
+
+[functions.google-forms]
+verify_jwt = false
+
+[functions.whatsapp]
+verify_jwt = false

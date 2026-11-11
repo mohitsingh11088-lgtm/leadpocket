@@ -1,0 +1,211 @@
+"use client";
+
+import { useEffect, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { Sparkles } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+
+type AuthMode = "sign-in" | "sign-up";
+
+export default function LoginForm() {
+  const router = useRouter();
+  const [mode, setMode] = useState<AuthMode>("sign-in");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const configured = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  );
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (new URLSearchParams(window.location.search).get("error") === "confirmation") {
+        setErrorMessage(
+          "That email confirmation link could not be verified. Try signing in or request a new confirmation email."
+        );
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const supabase = createClient();
+
+      if (mode === "sign-up") {
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            data: { full_name: name.trim() },
+          },
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        if (!data.session) {
+          setSuccessMessage(
+            "Account created. Check your email to confirm your address, then sign in."
+          );
+          setMode("sign-in");
+          return;
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        if (error) {
+          throw error;
+        }
+      }
+
+      const requestedPath = new URLSearchParams(window.location.search).get("next");
+      const destination =
+        requestedPath?.startsWith("/") && !requestedPath.startsWith("//")
+          ? requestedPath
+          : "/";
+
+      router.replace(destination);
+      router.refresh();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "We could not complete sign-in."
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-8">
+      <div className="mb-7 flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white">
+          <Sparkles size={21} />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold">LeadPocket</h1>
+          <p className="text-xs text-slate-500">A simpler CRM for your business</p>
+        </div>
+      </div>
+
+      <h2 className="text-2xl font-bold tracking-tight">
+        {mode === "sign-in" ? "Welcome back" : "Create your account"}
+      </h2>
+      <p className="mt-1 text-sm text-slate-500">
+        {mode === "sign-in"
+          ? "Sign in to manage your business leads."
+          : "Start organizing your customer relationships."}
+      </p>
+
+      {!configured && (
+        <div
+          role="alert"
+          className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+        >
+          Supabase is not connected yet. Copy <code>.env.example</code> to{" "}
+          <code>.env.local</code>, add your Supabase project URL and publishable
+          key, then restart the development server.
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        {mode === "sign-up" && (
+          <label className="block text-sm font-medium text-slate-700">
+            Your name
+            <input
+              required
+              minLength={2}
+              autoComplete="name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </label>
+        )}
+
+        <label className="block text-sm font-medium text-slate-700">
+          Email
+          <input
+            required
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          />
+        </label>
+
+        <label className="block text-sm font-medium text-slate-700">
+          Password
+          <input
+            required
+            type="password"
+            minLength={8}
+            autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          />
+          {mode === "sign-up" && (
+            <span className="mt-1 block text-xs font-normal text-slate-400">
+              Use at least 8 characters.
+            </span>
+          )}
+        </label>
+
+        {errorMessage && (
+          <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+            {errorMessage}
+          </p>
+        )}
+        {successMessage && (
+          <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            {successMessage}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={!configured || busy}
+          className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {busy
+            ? "Please wait..."
+            : mode === "sign-in"
+              ? "Sign in"
+              : "Create account"}
+        </button>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-slate-500">
+        {mode === "sign-in" ? "New to LeadPocket?" : "Already have an account?"}{" "}
+        <button
+          type="button"
+          onClick={() => {
+            setMode(mode === "sign-in" ? "sign-up" : "sign-in");
+            setErrorMessage("");
+            setSuccessMessage("");
+          }}
+          className="font-semibold text-blue-600 hover:text-blue-700"
+        >
+          {mode === "sign-in" ? "Create an account" : "Sign in"}
+        </button>
+      </p>
+    </section>
+  );
+}
