@@ -6,6 +6,7 @@ import type { Database } from "./lib/supabase/database.types";
 function isPublicPath(pathname: string) {
   return (
     pathname === "/login" ||
+    pathname === "/reset-password" ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/capture/")
   );

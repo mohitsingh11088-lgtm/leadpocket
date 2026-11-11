@@ -4,8 +4,9 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getPublicAppUrl } from "@/lib/public-app-url";
 
-type AuthMode = "sign-in" | "sign-up";
+type AuthMode = "sign-in" | "sign-up" | "forgot-password";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -23,9 +24,14 @@ export default function LoginForm() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      if (new URLSearchParams(window.location.search).get("error") === "confirmation") {
+      const authError = new URLSearchParams(window.location.search).get("error");
+      if (authError === "confirmation") {
         setErrorMessage(
           "That email confirmation link could not be verified. Try signing in or request a new confirmation email."
+        );
+      } else if (authError === "recovery") {
+        setErrorMessage(
+          "That password reset link is invalid or has expired. Request a new one and try again."
         );
       }
     }, 0);
@@ -42,7 +48,29 @@ export default function LoginForm() {
     try {
       const supabase = createClient();
 
-      if (mode === "sign-up") {
+      if (mode === "forgot-password") {
+        const appUrl = getPublicAppUrl();
+        if (!appUrl) {
+          throw new Error(
+            "Password reset needs the public website URL. Add NEXT_PUBLIC_APP_URL to your app settings and redeploy."
+          );
+        }
+        const redirectTo = new URL("/auth/callback", appUrl);
+        redirectTo.searchParams.set("next", "/reset-password");
+        const { error } = await supabase.auth.resetPasswordForEmail(
+          email.trim(),
+          { redirectTo: redirectTo.toString() }
+        );
+
+        if (error) {
+          throw error;
+        }
+
+        setSuccessMessage(
+          "If an account exists for that email, a password reset link has been sent."
+        );
+        return;
+      } else if (mode === "sign-up") {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
@@ -104,12 +132,18 @@ export default function LoginForm() {
       </div>
 
       <h2 className="text-2xl font-bold tracking-tight">
-        {mode === "sign-in" ? "Welcome back" : "Create your account"}
+        {mode === "sign-in"
+          ? "Welcome back"
+          : mode === "sign-up"
+            ? "Create your account"
+            : "Reset your password"}
       </h2>
       <p className="mt-1 text-sm text-slate-500">
         {mode === "sign-in"
           ? "Sign in to manage your business leads."
-          : "Start organizing your customer relationships."}
+          : mode === "sign-up"
+            ? "Start organizing your customer relationships."
+            : "Enter your email and we’ll send you a secure password reset link."}
       </p>
 
       {!configured && (
@@ -150,23 +184,25 @@ export default function LoginForm() {
           />
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
-          Password
-          <input
-            required
-            type="password"
-            minLength={8}
-            autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-          />
-          {mode === "sign-up" && (
-            <span className="mt-1 block text-xs font-normal text-slate-400">
-              Use at least 8 characters.
-            </span>
-          )}
-        </label>
+        {mode !== "forgot-password" && (
+          <label className="block text-sm font-medium text-slate-700">
+            Password
+            <input
+              required
+              type="password"
+              minLength={8}
+              autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+            {mode === "sign-up" && (
+              <span className="mt-1 block text-xs font-normal text-slate-400">
+                Use at least 8 characters.
+              </span>
+            )}
+          </label>
+        )}
 
         {errorMessage && (
           <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -188,16 +224,38 @@ export default function LoginForm() {
             ? "Please wait..."
             : mode === "sign-in"
               ? "Sign in"
-              : "Create account"}
+              : mode === "sign-up"
+                ? "Create account"
+                : "Send reset link"}
         </button>
       </form>
 
+      {mode === "sign-in" && (
+        <p className="mt-4 text-center text-sm">
+          <button
+            type="button"
+            onClick={() => {
+              setMode("forgot-password");
+              setErrorMessage("");
+              setSuccessMessage("");
+            }}
+            className="font-semibold text-blue-600 hover:text-blue-700"
+          >
+            Forgot password?
+          </button>
+        </p>
+      )}
+
       <p className="mt-6 text-center text-sm text-slate-500">
-        {mode === "sign-in" ? "New to LeadPocket?" : "Already have an account?"}{" "}
+        {mode === "sign-in" || mode === "forgot-password"
+          ? mode === "sign-in"
+            ? "New to LeadPocket?"
+            : "Remembered your password?"
+          : "Already have an account?"}{" "}
         <button
           type="button"
           onClick={() => {
-            setMode(mode === "sign-in" ? "sign-up" : "sign-in");
+            setMode("sign-in");
             setErrorMessage("");
             setSuccessMessage("");
           }}
