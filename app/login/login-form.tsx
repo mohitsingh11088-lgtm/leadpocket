@@ -71,11 +71,19 @@ export default function LoginForm() {
         );
         return;
       } else if (mode === "sign-up") {
+        const appUrl =
+          getPublicAppUrl() ??
+          (process.env.NODE_ENV !== "production" ? window.location.origin : null);
+        if (!appUrl) {
+          throw new Error(
+            "Account confirmation needs the public website URL. Add NEXT_PUBLIC_APP_URL to your app settings and redeploy."
+          );
+        }
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${appUrl}/auth/callback`,
             data: { full_name: name.trim() },
           },
         });

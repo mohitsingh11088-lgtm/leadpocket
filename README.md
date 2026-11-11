@@ -46,7 +46,7 @@ LeadPocket uses Supabase for account sign-in and private lead storage. To connec
 5. In Supabase Authentication settings, set the site URL to `http://localhost:3000` and add `http://localhost:3000/auth/callback` to the allowed redirect URLs.
 6. Restart the dev server with `npm run dev`, then open `http://localhost:3000` and create an account.
 
-For production password recovery, set `NEXT_PUBLIC_APP_URL` to your public site origin (for example `https://your-project.vercel.app`) in the hosting provider's environment settings and redeploy. In Supabase Authentication → URL Configuration, set the production Site URL and allow `https://your-project.vercel.app/auth/callback` as a redirect URL (and your local callback URL while developing). The sign-in page's **Forgot password?** link sends a reset email; users return through the callback to choose a new password. Do not use a Codespaces URL as the production Site URL or redirect.
+For production password recovery, set `NEXT_PUBLIC_APP_URL` to `https://leadpocket.vercel.app` (or your chosen public site origin) in Vercel's environment settings and redeploy so the value is included in the client bundle. The app uses that origin for password recovery and signup confirmation; production falls back to `https://leadpocket.vercel.app` and never uses localhost or a Codespaces host. In Supabase Authentication → URL Configuration, set the production Site URL and allow `https://leadpocket.vercel.app/auth/callback` as a redirect URL (and `http://localhost:3000/auth/callback` only for local development). The callback exchanges the one-time authorization code, stores the Supabase session, and sends password recovery users to `/reset-password`.
 
 ## Website lead capture
 

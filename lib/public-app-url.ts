@@ -1,17 +1,22 @@
+const productionAppUrl = "https://leadpocket.vercel.app";
+
 export function getPublicAppUrl(): string | null {
   const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
   if (!configuredUrl) {
-    return null;
+    return process.env.NODE_ENV === "production" ? productionAppUrl : null;
   }
 
   try {
     const url = new URL(configuredUrl);
+    const isLocalHost = ["localhost", "127.0.0.1", "[::1]"].includes(
+      url.hostname
+    );
     const isLocalDevelopmentHost =
-      process.env.NODE_ENV !== "production" &&
-      (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+      process.env.NODE_ENV !== "production" && isLocalHost;
 
     if (
       (url.protocol !== "https:" && !isLocalDevelopmentHost) ||
+      (isLocalHost && !isLocalDevelopmentHost) ||
       url.username ||
       url.password ||
       url.pathname !== "/" ||
@@ -20,11 +25,13 @@ export function getPublicAppUrl(): string | null {
       url.hostname.endsWith(".app.github.dev") ||
       url.hostname.endsWith(".github.dev")
     ) {
-      return null;
+      return process.env.NODE_ENV === "production"
+        ? productionAppUrl
+        : null;
     }
 
     return url.origin;
   } catch {
-    return null;
+    return process.env.NODE_ENV === "production" ? productionAppUrl : null;
   }
 }
